@@ -1,25 +1,56 @@
 // netlify/functions/verify-payment.js
-// Verifies Flutterwave transactions server-side using your secret key.
-// The secret key is stored as a Netlify environment variable — never in code.
+
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS"
+};
 
 exports.handler = async function(event) {
 
-  // Only allow POST
+  // Handle preflight CORS request
+  if (event.httpMethod === "OPTIONS") {
+    return { statusCode: 200, headers: CORS_HEADERS, body: "" };
+  }
+
   if (event.httpMethod !== "POST") {
-    return { statusCode: 405, body: "Method Not Allowed" };
+    return { statusCode: 405, headers: CORS_HEADERS, body: "Method Not Allowed" };
   }
 
   try {
-    const { transaction_id, name, email, phone } = JSON.parse(event.body);
+    console.log("verify-payment called");
+    console.log("Raw body:", event.body);
+
+    const payload = JSON.parse(event.body);
+    console.log("Parsed payload:", JSON.stringify(payload));
+
+    const { name, email, phone } = payload;
+
+    // Flutterwave can return transaction ID under different field names
+    const transaction_id = payload.transaction_id || payload.id || payload.flw_ref;
+    console.log("Transaction ID:", transaction_id);
 
     if (!transaction_id) {
+      console.log("No transaction ID found in payload");
       return {
         statusCode: 400,
-        body: JSON.stringify({ status: "error", message: "No transaction ID provided" })
+        headers: CORS_HEADERS,
+        body: JSON.stringify({ status: "error", message: "No transaction ID found" })
       };
     }
 
-    // ── Step 1: Verify transaction with Flutterwave API ──────────────────
+    // Check secret key is available
+    if (!process.env.FLW_SECRET_KEY) {
+      console.log("ERROR: FLW_SECRET_KEY environment variable is not set");
+      return {
+        statusCode: 500,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({ status: "error", message: "Server configuration error" })
+      };
+    }
+
+    // ── Verify with Flutterwave API ───────────────────────────────────────
+    console.log("Calling Flutterwave verify API...");
     const verifyRes = await fetch(
       `https://api.flutterwave.com/v3/transactions/${transaction_id}/verify`,
       {
@@ -32,9 +63,22 @@ exports.handler = async function(event) {
     );
 
     const verifyData = await verifyRes.json();
+    console.log("Flutterwave response:", JSON.stringify(verifyData));
 
-    // ── Step 2: Confirm amount, currency and status are all correct ───────
     const tx = verifyData.data;
+
+    if (!tx) {
+      console.log("No transaction data in Flutterwave response");
+      await logToSheet(name, email, phone, "Paid - Full 30 Days", "Verification Failed - No Data");
+      return {
+        statusCode: 400,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({ status: "error", message: "Could not retrieve transaction" })
+      };
+    }
+
+    console.log("TX status:", tx.status, "| Amount:", tx.amount, "| Currency:", tx.currency);
+
     const isValid =
       verifyData.status === "success" &&
       tx.status === "successful" &&
@@ -42,33 +86,38 @@ exports.handler = async function(event) {
       tx.currency === "NGN";
 
     if (!isValid) {
-      // Log the failed/suspicious attempt to the sheet
-      await logToSheet(name, email, phone, "Paid - Full 30 Days", "Payment Failed / Suspicious");
+      console.log("Payment validation failed");
+      await logToSheet(name, email, phone, "Paid - Full 30 Days", "Payment Failed / Invalid");
       return {
         statusCode: 400,
+        headers: CORS_HEADERS,
         body: JSON.stringify({ status: "error", message: "Payment verification failed" })
       };
     }
 
-    // ── Step 3: Log confirmed payment to Google Sheet ─────────────────────
-    await logToSheet(name, email, phone, "Paid - Full 30 Days", "Payment Verified ✓");
+    // ── All good — log to sheet and send email ────────────────────────────
+    console.log("Payment verified successfully, logging to sheet...");
+    await logToSheet(name, email, phone, "Paid - Full 30 Days", "Payment Verified");
+    console.log("Done!");
 
     return {
       statusCode: 200,
+      headers: CORS_HEADERS,
       body: JSON.stringify({ status: "success" })
     };
 
   } catch (err) {
-    console.error("Verification error:", err);
+    console.error("Verification error:", err.toString());
     return {
       statusCode: 500,
+      headers: CORS_HEADERS,
       body: JSON.stringify({ status: "error", message: err.toString() })
     };
   }
 };
 
 
-// ── Send data to Google Apps Script (which logs + sends email) ────────────
+// ── Log to Google Apps Script (handles sheet + email) ─────────────────────
 async function logToSheet(name, email, phone, type, status) {
   const SHEET_URL = "https://script.google.com/macros/s/AKfycbxV8exVnp5kdSl3r-NSWIwugIE7HueVzGqjB-EzMLMOScO1Hw4lCdKLStDb6zBMWaqH/exec";
 
@@ -79,8 +128,14 @@ async function logToSheet(name, email, phone, type, status) {
   form.append("type",   type   || "");
   form.append("status", status || "");
 
-  await fetch(SHEET_URL, {
-    method: "POST",
-    body: form
-  });
+  try {
+    const res = await fetch(SHEET_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: form.toString()
+    });
+    console.log("Sheet log response status:", res.status);
+  } catch (err) {
+    console.error("Sheet log failed:", err.toString());
+  }
 }
