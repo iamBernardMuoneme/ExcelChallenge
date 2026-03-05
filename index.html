@@ -606,11 +606,16 @@ footer{padding:34px 0;text-align:center;border-top:1px solid var(--border);color
 const SHEET_URL = "https://script.google.com/macros/s/AKfycbxV8exVnp5kdSl3r-NSWIwugIE7HueVzGqjB-EzMLMOScO1Hw4lCdKLStDb6zBMWaqH/exec";
 
 function logToSheet(name, email, phone, type, status) {
+  const form = new FormData();
+  form.append("name", name);
+  form.append("email", email);
+  form.append("phone", phone);
+  form.append("type", type);
+  form.append("status", status);
   fetch(SHEET_URL, {
     method: "POST",
     mode: "no-cors",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, email, phone, type, status })
+    body: form
   }).catch(err => console.warn("Sheet log failed:", err));
 }
 
@@ -726,7 +731,7 @@ function doPayment(){
     amount:15000,currency:"NGN",
     payment_options:"card,ussd,bank_transfer",
     customer:{name,email,phone_number:phone},
-    customizations:{title:"30-Day Excel Challenge",description:"Full access · La Grande Galaxie Consult"},
+    customizations:{title:"La Grande Galaxie Consult",description:"30-Day Excel Challenge · Full Access"},
     callback(data){
       btn.disabled=false;btn.textContent='Pay ₦15,000 / $15 Securely';
       if(data.status==="successful"){
