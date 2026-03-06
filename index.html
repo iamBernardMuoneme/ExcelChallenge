@@ -772,6 +772,11 @@ document.querySelectorAll('a[href^="#"]').forEach(a=>{
     if(t){e.preventDefault();t.scrollIntoView({behavior:'smooth'})}
   });
 });
+
+// Auto-open payment modal if URL contains ?upgrade=true
+if(window.location.search.includes('upgrade=true')){
+  setTimeout(()=>openPay(), 800);
+}
 </script>
 </body>
 </html>
