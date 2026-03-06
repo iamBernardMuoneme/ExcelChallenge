@@ -8,7 +8,6 @@ const CORS_HEADERS = {
 
 exports.handler = async function(event) {
 
-  // Handle preflight CORS request
   if (event.httpMethod === "OPTIONS") {
     return { statusCode: 200, headers: CORS_HEADERS, body: "" };
   }
@@ -19,57 +18,70 @@ exports.handler = async function(event) {
 
   try {
     console.log("verify-payment called");
-    console.log("Raw body:", event.body);
-
     const payload = JSON.parse(event.body);
-    console.log("Parsed payload:", JSON.stringify(payload));
+    console.log("Payload:", JSON.stringify(payload));
 
     const { name, email, phone } = payload;
 
-    // Flutterwave can return transaction ID under different field names
-    const transaction_id = payload.transaction_id || payload.id || payload.flw_ref;
-    console.log("Transaction ID:", transaction_id);
+    // Get both possible identifiers from Flutterwave callback
+    const transaction_id = payload.transaction_id || payload.id;
+    const tx_ref = payload.tx_ref || payload.txRef;
 
-    if (!transaction_id) {
-      console.log("No transaction ID found in payload");
+    console.log("transaction_id:", transaction_id, "| tx_ref:", tx_ref);
+
+    if (!transaction_id && !tx_ref) {
       return {
         statusCode: 400,
         headers: CORS_HEADERS,
-        body: JSON.stringify({ status: "error", message: "No transaction ID found" })
+        body: JSON.stringify({ status: "error", message: "No transaction identifier found" })
       };
     }
 
-    // Check secret key is available
-    if (!process.env.FLW_SECRET_KEY) {
-      console.log("ERROR: FLW_SECRET_KEY environment variable is not set");
-      return {
-        statusCode: 500,
-        headers: CORS_HEADERS,
-        body: JSON.stringify({ status: "error", message: "Server configuration error" })
-      };
-    }
+    let verifyData;
 
-    // ── Verify with Flutterwave API ───────────────────────────────────────
-    console.log("Calling Flutterwave verify API...");
-    const verifyRes = await fetch(
-      `https://api.flutterwave.com/v3/transactions/${transaction_id}/verify`,
-      {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${process.env.FLW_SECRET_KEY}`,
-          "Content-Type": "application/json"
+    // Try numeric transaction_id first
+    if (transaction_id && String(transaction_id).match(/^\d+$/)) {
+      console.log("Verifying by transaction_id:", transaction_id);
+      const res = await fetch(
+        `https://api.flutterwave.com/v3/transactions/${transaction_id}/verify`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${process.env.FLW_SECRET_KEY}`,
+            "Content-Type": "application/json"
+          }
         }
+      );
+      verifyData = await res.json();
+      console.log("By ID response:", JSON.stringify(verifyData));
+    }
+
+    // If that failed or no numeric ID, try by tx_ref
+    if (!verifyData?.data && tx_ref) {
+      console.log("Verifying by tx_ref:", tx_ref);
+      const res = await fetch(
+        `https://api.flutterwave.com/v3/transactions?tx_ref=${tx_ref}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${process.env.FLW_SECRET_KEY}`,
+            "Content-Type": "application/json"
+          }
+        }
+      );
+      const listData = await res.json();
+      console.log("By tx_ref response:", JSON.stringify(listData));
+      // tx_ref query returns a list — get the first match
+      if (listData?.data?.length > 0) {
+        verifyData = { status: "success", data: listData.data[0] };
       }
-    );
+    }
 
-    const verifyData = await verifyRes.json();
-    console.log("Flutterwave response:", JSON.stringify(verifyData));
-
-    const tx = verifyData.data;
+    const tx = verifyData?.data;
 
     if (!tx) {
-      console.log("No transaction data in Flutterwave response");
-      await logToSheet(name, email, phone, "Paid - Full 30 Days", "Verification Failed - No Data");
+      console.log("No transaction data found");
+      await logToSheet(name, email, phone, "Paid - Full 30 Days", "Verification Failed - Not Found");
       return {
         statusCode: 400,
         headers: CORS_HEADERS,
@@ -79,26 +91,23 @@ exports.handler = async function(event) {
 
     console.log("TX status:", tx.status, "| Amount:", tx.amount, "| Currency:", tx.currency);
 
-    const isValid =
-      verifyData.status === "success" &&
-      tx.status === "successful" &&
-      tx.amount >= 15000 &&
-      tx.currency === "NGN";
+    const isValidAmount = tx.amount >= 15000 && tx.currency === "NGN";
+    const isSuccessful = tx.status === "successful";
+    const isPending = tx.status === "pending" || tx.status === "pending verification";
 
-    if (!isValid) {
-      console.log("Payment validation failed");
-      await logToSheet(name, email, phone, "Paid - Full 30 Days", "Payment Failed / Invalid");
+    if (!isValidAmount || (!isSuccessful && !isPending)) {
+      console.log("Validation failed");
+      await logToSheet(name, email, phone, "Paid - Full 30 Days", `Payment Failed - Status: ${tx.status}`);
       return {
         statusCode: 400,
         headers: CORS_HEADERS,
-        body: JSON.stringify({ status: "error", message: "Payment verification failed" })
+        body: JSON.stringify({ status: "error", message: "Payment validation failed" })
       };
     }
 
-    // ── All good — log to sheet and send email ────────────────────────────
-    console.log("Payment verified successfully, logging to sheet...");
-    await logToSheet(name, email, phone, "Paid - Full 30 Days", "Payment Verified");
-    console.log("Done!");
+    const logStatus = isSuccessful ? "Payment Verified" : "Payment Pending - Bank Transfer";
+    await logToSheet(name, email, phone, "Paid - Full 30 Days", logStatus);
+    console.log("Success! Logged as:", logStatus);
 
     return {
       statusCode: 200,
@@ -107,7 +116,7 @@ exports.handler = async function(event) {
     };
 
   } catch (err) {
-    console.error("Verification error:", err.toString());
+    console.error("Error:", err.toString());
     return {
       statusCode: 500,
       headers: CORS_HEADERS,
@@ -117,7 +126,6 @@ exports.handler = async function(event) {
 };
 
 
-// ── Log to Google Apps Script (handles sheet + email) ─────────────────────
 async function logToSheet(name, email, phone, type, status) {
   const SHEET_URL = "https://script.google.com/macros/s/AKfycbxV8exVnp5kdSl3r-NSWIwugIE7HueVzGqjB-EzMLMOScO1Hw4lCdKLStDb6zBMWaqH/exec";
 
@@ -134,7 +142,7 @@ async function logToSheet(name, email, phone, type, status) {
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: form.toString()
     });
-    console.log("Sheet log response status:", res.status);
+    console.log("Sheet log status:", res.status);
   } catch (err) {
     console.error("Sheet log failed:", err.toString());
   }
