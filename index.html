@@ -724,45 +724,45 @@ function doPayment(){
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){alert('Please enter a valid email address.');return}
   const btn=document.getElementById('payBtn');
   btn.disabled=true;btn.textContent='Redirecting to payment…';
+
   FlutterwaveCheckout({
-    // ⚠️ Replace with your Flutterwave PUBLIC key from dashboard.flutterwave.com
-    public_key:"FLWPUBK-96498e837109a562ea5895ddc511c19d-X",
+    public_key:"FLWPUBK-c18e773b5067aff601816ed0a83c9d05-X",
     tx_ref:"LGG-30EXCEL-"+Date.now(),
     amount:15000,currency:"NGN",
     payment_options:"card,ussd,bank_transfer",
     customer:{name,email,phone_number:phone},
     customizations:{title:"La Grande Galaxie Consult",description:"30-Day Excel Challenge · Full Access"},
     callback(data){
-      btn.disabled=false;btn.textContent='Pay ₦15,000 / $15 Securely';
-      if(data.status==="successful"){
-        logToSheet(name, email, phone, 'Paid - Full 30 Days', 'Payment Successful');
+      btn.disabled=false;
+      btn.textContent='Pay ₦15,000 / $15 Securely';
+      console.log("Flutterwave callback data:", JSON.stringify(data));
+      if(data.status==="successful" || data.status==="completed" || data.status==="pending"){
+        // Trust Flutterwave — show success immediately
         closePay();
-        openSuccess(name,email);
+        openSuccess(name, email);
+        // Log to sheet in background — don't block success screen
+        fetch("/.netlify/functions/verify-payment", {
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({
+            transaction_id: data.transaction_id || data.id,
+            tx_ref: data.tx_ref || data.txRef,
+            name, email, phone
+          })
+        }).then(r=>r.json()).then(result=>{
+          console.log("Verification result:", result);
+        }).catch(err=>{
+          console.warn("Background verification failed:", err);
+        });
+      } else {
+        alert("Payment was not completed. Please try again.");
       }
-      else{alert("Payment was not completed. Please try again.")}
     },
-    onclose(){btn.disabled=false;btn.textContent='Pay ₦15,000 / $15 Securely'}
+    onclose(){
+      btn.disabled=false;
+      btn.textContent='Pay ₦15,000 / $15 Securely';
+    }
   });
-  /*
-  ── ONBOARDING EMAIL TEMPLATE (send via EmailJS / backend) ─────────────
-
-  Subject: 🎉 Welcome to the 30-Day Excel Challenge!
-
-  Hi [Name],
-
-  You're officially enrolled! Here's everything you need to begin:
-
-  📱 WhatsApp Channel (daily lessons & resources):
-     https://whatsapp.com/channel/0029VbCKyFTIiRowrTqYfT1k
-
-  ✈️  Telegram Channel (community & support):
-     https://t.me/excelchallenge30
-
-  Day 1 kicks off soon — join both channels so you don't miss a thing.
-  Welcome to the family! 🙌
-
-  — La Grande Galaxie Consult Team
-  ──────────────────────────────────────────────────────────────────────── */
 }
 
 /* smooth scroll */
