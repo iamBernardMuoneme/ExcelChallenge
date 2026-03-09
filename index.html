@@ -45,7 +45,7 @@ button{font-family:var(--font);cursor:pointer}
 .nav-btn:hover{background:var(--green3);transform:translateY(-1px)}
 
 /* HERO */
-.hero{min-height:100vh;padding:128px 0 80px;display:flex;align-items:center;position:relative;overflow:hidden;
+.hero{min-height:100vh;padding:80px 0 80px;display:flex;align-items:center;position:relative;overflow:hidden;
   background:radial-gradient(ellipse 72% 55% at 62% 36%,rgba(29,78,216,0.17) 0%,transparent 65%),
              radial-gradient(ellipse 44% 34% at 14% 76%,rgba(21,128,61,0.11) 0%,transparent 60%),var(--navy)}
 .hero-grid{position:absolute;inset:0;pointer-events:none;
@@ -227,6 +227,34 @@ footer{padding:34px 0;text-align:center;border-top:1px solid var(--border);color
 .cf{position:absolute;animation:cfall linear forwards}
 @keyframes cfall{0%{opacity:1;transform:translateY(-10px) rotate(0deg)}100%{opacity:0;transform:translateY(110vh) rotate(540deg)}}
 
+/* COUNTDOWN */
+.countdown-box{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:var(--r);padding:18px 22px;margin-bottom:20px;display:inline-block}
+.countdown-label{font-size:12px;color:var(--g2);font-weight:600;margin-bottom:12px;text-transform:uppercase;letter-spacing:.6px}
+.countdown-grid{display:flex;align-items:center;gap:6px}
+.cd-unit{text-align:center}
+.cd-num{font-size:clamp(24px,3.5vw,36px);font-weight:800;color:#fff;letter-spacing:-1px;line-height:1;background:rgba(29,78,216,0.2);border:1px solid rgba(59,130,246,0.2);border-radius:8px;padding:8px 14px;min-width:54px}
+.cd-lbl{font-size:10px;color:var(--g2);text-align:center;margin-top:5px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.cd-sep{font-size:28px;font-weight:800;color:var(--blue2);margin-bottom:16px;line-height:1}
+
+/* SPOTS */
+.spots-box{margin-bottom:24px;max-width:420px}
+.spots-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.spots-label{font-size:13px;font-weight:700;color:var(--amber)}
+.spots-count{font-size:12px;color:var(--g2)}
+.spots-count strong{color:#fff}
+.spots-track{height:8px;background:rgba(255,255,255,0.08);border-radius:50px;overflow:hidden}
+.spots-fill{height:100%;background:linear-gradient(90deg,var(--amber),#ef4444);border-radius:50px;transition:width 1s ease}
+
+/* FAQ */
+.faq-list{max-width:720px;margin:0 auto}
+.faq-item{border:1px solid var(--border);border-radius:var(--r);margin-bottom:12px;overflow:hidden;background:var(--card)}
+.faq-q{width:100%;background:none;border:none;color:#fff;font-size:15px;font-weight:600;padding:20px 24px;text-align:left;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:16px;font-family:var(--font);transition:background .2s}
+.faq-q:hover{background:rgba(255,255,255,0.04)}
+.faq-icon{font-size:20px;color:var(--green3);flex-shrink:0;transition:transform .3s;line-height:1}
+.faq-q.open .faq-icon{transform:rotate(45deg)}
+.faq-a{max-height:0;overflow:hidden;transition:max-height .35s ease,padding .35s ease;font-size:14px;color:var(--g2);line-height:1.75;padding:0 24px}
+.faq-a.open{max-height:200px;padding:0 24px 20px}
+
 /* RESPONSIVE */
 @media(max-width:680px){
   .stats-grid{grid-template-columns:1fr 1fr}
@@ -255,6 +283,15 @@ footer{padding:34px 0;text-align:center;border-top:1px solid var(--border);color
   </div>
 </nav>
 
+<!-- ANNOUNCEMENT BANNER (top of page) -->
+<div style="background:linear-gradient(135deg,#f59e0b,#d97706);padding:14px 0;text-align:center;margin-top:68px">
+  <div class="wrap">
+    <p style="font-size:14px;font-weight:700;color:#000;margin:0">
+      🚀 Next Cohort Starts <strong>April 11th at 3:00 PM WAT</strong> — Register now to secure your spot!
+    </p>
+  </div>
+</div>
+
 <!-- HERO -->
 <section class="hero">
   <div class="hero-grid"></div>
@@ -264,6 +301,32 @@ footer{padding:34px 0;text-align:center;border-top:1px solid var(--border);color
       <div class="pill"><span class="pill-dot"></span> Day 1 is completely FREE — No card needed</div>
       <h1>Master <em>Microsoft Excel</em><br>in 30 Days</h1>
       <p class="hero-sub">Start for free on Day 1 — then unlock all 30 days for just ₦15,000 / $15. From total beginner to confident Excel professional, one day at a time.</p>
+
+      <!-- COUNTDOWN TIMER -->
+      <div class="countdown-box">
+        <div class="countdown-label">⏳ Next cohort kicks off in</div>
+        <div class="countdown-grid">
+          <div class="cd-unit"><div class="cd-num" id="cd-days">00</div><div class="cd-lbl">Days</div></div>
+          <div class="cd-sep">:</div>
+          <div class="cd-unit"><div class="cd-num" id="cd-hours">00</div><div class="cd-lbl">Hours</div></div>
+          <div class="cd-sep">:</div>
+          <div class="cd-unit"><div class="cd-num" id="cd-mins">00</div><div class="cd-lbl">Minutes</div></div>
+          <div class="cd-sep">:</div>
+          <div class="cd-unit"><div class="cd-num" id="cd-secs">00</div><div class="cd-lbl">Seconds</div></div>
+        </div>
+      </div>
+
+      <!-- LIMITED SPOTS -->
+      <div class="spots-box">
+        <div class="spots-top">
+          <span class="spots-label">🔥 Limited spots available</span>
+          <span class="spots-count"><strong id="spotsLeft">37</strong> of 50 spots remaining</span>
+        </div>
+        <div class="spots-track">
+          <div class="spots-fill" style="width:26%"></div>
+        </div>
+      </div>
+
       <div class="hero-btns">
         <button class="btn-main" onclick="openFree()">Start Free — Day 1 🎓</button>
         <button class="btn-line" onclick="openPay()">Get Full Access — ₦15,000 / $15</button>
@@ -460,6 +523,89 @@ footer{padding:34px 0;text-align:center;border-top:1px solid var(--border);color
   </div>
 </section>
 
+<!-- ANNOUNCEMENT BANNER -->
+<div style="background:linear-gradient(135deg,#f59e0b,#d97706);padding:18px 0;text-align:center">
+  <div class="wrap">
+    <p style="font-size:15px;font-weight:700;color:#000;margin:0">
+      🚀 Next Cohort Starts <strong>April 11th at 3:00 PM WAT</strong> — Register now to get the live YouTube link sent directly to you!
+    </p>
+  </div>
+</div>
+
+<!-- FAQ -->
+<section class="sec" id="faq" style="background:var(--navy2);border-top:1px solid var(--border)">
+  <div class="wrap">
+    <div class="fade-up" style="text-align:center;margin-bottom:48px">
+      <div class="eyebrow">FAQ</div>
+      <h2 class="sec-title">Frequently Asked Questions</h2>
+      <p class="sec-lead">Everything you need to know before you sign up.</p>
+    </div>
+    <div class="faq-list fade-up">
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          What is the structure of the training?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-a">
+          The training runs for 30 days, with live classes on weekends (Saturday & Sunday). On weekdays, you'll have assignments and tasks to complete.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          What are the class hours?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-a">
+          Each session lasts 2 hours — Saturday from <strong>3:00 PM to 5:00 PM WAT</strong> and Sunday from <strong>3:00 PM to 5:00 PM WAT</strong>.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          Will I receive a certificate?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-a">
+          Yes! You will receive a certificate of completion upon finishing the challenge.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          What if I miss a live session?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-a">
+          No worries! All sessions are recorded and you'll have unlimited access to rewatch them at any time.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          Who is this challenge for?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-a">
+          This is designed for busy professionals and anyone looking to master Excel efficiently.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          Do I need prior Excel knowledge?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-a">
+          No, the challenge covers beginner to advanced topics, so everyone can follow along.
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
 <!-- CTA BAND -->
 <section class="cta-band">
   <div class="wrap fade-up">
@@ -619,6 +765,28 @@ function logToSheet(name, email, phone, type, status) {
   }).catch(err => console.warn("Sheet log failed:", err));
 }
 
+/* COUNTDOWN TIMER — April 11 2026 3:00 PM WAT (UTC+1) */
+function updateCountdown(){
+  const target = new Date('2026-04-11T15:00:00+01:00').getTime();
+  const now = new Date().getTime();
+  const diff = target - now;
+  if(diff <= 0){
+    document.querySelectorAll('.cd-num').forEach(el=>el.textContent='00');
+    document.querySelector('.countdown-label').textContent='🎉 The challenge has started!';
+    return;
+  }
+  const days  = Math.floor(diff / (1000*60*60*24));
+  const hours = Math.floor((diff % (1000*60*60*24)) / (1000*60*60));
+  const mins  = Math.floor((diff % (1000*60*60)) / (1000*60));
+  const secs  = Math.floor((diff % (1000*60)) / 1000);
+  document.getElementById('cd-days').textContent  = String(days).padStart(2,'0');
+  document.getElementById('cd-hours').textContent = String(hours).padStart(2,'0');
+  document.getElementById('cd-mins').textContent  = String(mins).padStart(2,'0');
+  document.getElementById('cd-secs').textContent  = String(secs).padStart(2,'0');
+}
+updateCountdown();
+setInterval(updateCountdown, 1000);
+
 /* scroll reveal */
 const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting)e.target.classList.add('in')}),{threshold:0.1});
 document.querySelectorAll('.fade-up').forEach(el=>io.observe(el));
@@ -776,6 +944,20 @@ document.querySelectorAll('a[href^="#"]').forEach(a=>{
 // Auto-open payment modal if URL contains ?upgrade=true
 if(window.location.search.includes('upgrade=true')){
   setTimeout(()=>openPay(), 800);
+}
+
+/* FAQ toggle */
+function toggleFaq(btn){
+  const answer = btn.nextElementSibling;
+  const isOpen = answer.classList.contains('open');
+  // Close all open FAQs
+  document.querySelectorAll('.faq-a.open').forEach(a=>{a.classList.remove('open')});
+  document.querySelectorAll('.faq-q.open').forEach(q=>{q.classList.remove('open')});
+  // Open clicked one if it was closed
+  if(!isOpen){
+    answer.classList.add('open');
+    btn.classList.add('open');
+  }
 }
 </script>
 </body>
